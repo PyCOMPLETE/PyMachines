@@ -4,9 +4,10 @@ import numpy as np
 from scipy.constants import c
 
 from PyHEADTAIL.general.element import Element
+import PyHEADTAIL.particles.generators as gen
 
 try:
-        from PyHEAxDTAIL.trackers.transverse_tracking_cython import TransverseMap
+        from PyHEADTAIL.trackers.transverse_tracking_cython import TransverseMap
         from PyHEADTAIL.trackers.detuners_cython import (Chromaticity,
                                                      AmplitudeDetuning)
 except ImportError as e:
@@ -20,130 +21,137 @@ except ImportError as e:
 from PyHEADTAIL.trackers.simple_long_tracking import LinearMap, RFSystems
 
 class BasicSynchrotron(Element):
-        def __init__(self, optics_mode='smooth', circumference=None, n_segments=None, s=None,
-                alpha_x=None, beta_x=None, D_x=None, alpha_y=None, beta_y=None, D_y=None,
-                accQ_x=None, accQ_y=None, Qp_x=0, Qp_y=0, app_x=0, app_y=0, app_xy=0,
-                alpha_mom_compaction=None, longitudinal_mode=None, Q_s=None,
-                h_RF=None, V_RF=None, dphi_RF=None, p0=None, p_increment=None,
-                charge, mass, **kwargs):
+    def __init__(self, optics_mode, circumference=None, n_segments=None, s=None,
+            alpha_x=None, beta_x=None, D_x=None, alpha_y=None, beta_y=None, D_y=None,
+            accQ_x=None, accQ_y=None, Qp_x=0, Qp_y=0, app_x=0, app_y=0, app_xy=0,
+            alpha_mom_compaction=None, longitudinal_mode=None, Q_s=None,
+            h_RF=None, V_RF=None, dphi_RF=None, p0=None, p_increment=None,
+            charge=None, mass=None, **kwargs):
 
-                self.optics_mode = optics_mode
-                self.longitudinal_mode = longitudinal_mode
-                self.p0 = p0
-                self.charge = charge
-                self.mass = mass
+            
+            self.optics_mode = optics_mode
+            self.longitudinal_mode = longitudinal_mode
+            self.charge = charge
+            self.mass = mass
+            self.p0 = p0
+            
+            detuners = []
+            if Qp_x != 0 or Qp_y != 0:
+                    detuners.append(Chromaticity(Qp_x, Qp_y))
+            if app_x != 0 or app_y != 0 or app_xy != 0:
+                    detuners.append(AmplitudeDetuning(app_x, app_y, app_xy))
 
-                detuners = []
-                if Qp_x != 0 or Qp_y != 0:
-                        detuners.append(Chromaticity(Qp_x, Qp_y))
-                if app_x != 0 or app_y != 0 or app_xy != 0:
-                        detuners.append(AmplitudeDetuning(app_x, app_y, app_xy))
+            if optics_mode == 'smooth':
+                    if circumference is None:
+                            raise ValueError('circumference has to be specified if optics_mode = "smooth"')
 
-                if optics_mode == 'smooth':
-                        if circumference is None:
-                                raise ValueError('circumference has to be specified if optics_mode = "smooth"')
+                    if  n_segments is None:
+                            raise ValueError('n_segments has to be specified if optics_mode = "smooth"')
 
-                        if  n_segments is None:
-                                raise ValueError('n_segments has to be specified if optics_mode = "smooth"')
-
-                        if s is not None:
-                                raise ValueError('s vector cannot be provided if optics_mode = "smooth"')
-
-
-                        s = (np.arange(0, n_segments + 1)
-                                  * circumference / n_segments)
-
-                        self.transverse_map = TransverseMap(s=s,
-             alpha_x=0.*s,
-             beta_x=0.*s+beta_x,
-             D_x=0.*s+D_x,
-             alpha_y=0.*s,
-             beta_y=0.*s+beta_y,
-             D_y=0.*s+D_y,
-             accQ_x=accQ_x, accQ_y=accQ_y, detuners=detuners)
+                    if s is not None:
+                            raise ValueError('s vector cannot be provided if optics_mode = "smooth"')
 
 
-                elif optics_mode == 'non-smooth':
-                        if circumference is not None:
-                                raise ValueError('circumference cannot be provided if optics_mode = "non-smooth"')
+                    s = (np.arange(0, n_segments + 1)
+                              * circumference / n_segments)
 
-                        if  n_segments is not None:
-                                raise ValueError('n_segments cannot be provided if optics_mode = "non-smooth"')
-
-                        if s is None:
-                                raise ValueError('s has to be specified if optics_mode = "smooth"')
-
-                        self.transverse_map = TransverseMap(s=s,
-             alpha_x=alpha_x,
-             beta_x=beta_x,
-             D_x=D_x,
-             alpha_y=alpha_y,
-             beta_y=beta_y,
-             D_y=D_y,
-             accQ_x=accQ_x, accQ_y=accQ_y, detuners=detuners)
-
-                else:
-                        raise ValueError('optics_mode not recognized')
-
-                self.circumference = s[-1]
+                    self.transverse_map = TransverseMap(s=s,
+                     alpha_x=0.*s,
+                     beta_x=0.*s+beta_x,
+                     D_x=0.*s+D_x,
+                     alpha_y=0.*s,
+                     beta_y=0.*s+beta_y,
+                     D_y=0.*s+D_y,
+                     accQ_x=accQ_x, accQ_y=accQ_y, detuners=detuners)
 
 
-                # compute the index of the element before which to insert
-                # the longitudinal map
-                if longitudinal_mode is not None:
-                        for insert_before, si in enumerate(s):
-                                if si > 0.5 * self.circumference:
-                                        break
+            elif optics_mode == 'non-smooth':
+                    if circumference is not None:
+                            raise ValueError('circumference cannot be provided if optics_mode = "non-smooth"')
 
-                if longitudinal_mode == 'linear':
-                        self.longitudinal_map = LinearMap(
-                                np.atleast_1d(alpha_mom_compaction),
-                                self.circumference, Q_s,
-                                D_x=self.transverse_map.D_x[insert_before],
-                                D_y=self.transverse_map.D_y[insert_before]
-                        )
-                elif longitudinal_mode == 'non-linear':
-                        self.longitudinal_map = RFSystems(
-                                self.circumference, np.atleast_1d(h_RF),
-                                np.atleast_1d(V_RF), np.atleast_1d(dphi_RF),
-                                np.atleast_1d(alpha_mom_compaction), self.gamma, self.p_increment,
-                                D_x=self.transverse_map.D_x[insert_before],
-                                D_y=self.transverse_map.D_y[insert_before]
-                        )
-                else:
-                        raise NotImplementedError(
-                                'Something wrong with longitudinal_mode')
+                    if  n_segments is not None:
+                            raise ValueError('n_segments cannot be provided if optics_mode = "non-smooth"')
 
-        @property
-        def gamma(self):
-                return self._gamma
-        @gamma.setter
-        def gamma(self, value):
-                self._gamma = value
-                self._beta = np.sqrt(1 - self.gamma**-2)
-                self._betagamma = np.sqrt(self.gamma**2 - 1)
-                self._p0 = self.betagamma * self.mass * c
+                    if s is None:
+                            raise ValueError('s has to be specified if optics_mode = "smooth"')
 
-        @property
-        def beta(self):
-                return self._beta
-        @beta.setter
-        def beta(self, value):
-                self.gamma = 1. / np.sqrt(1-value**2)
+                    self.transverse_map = TransverseMap(s=s,
+         alpha_x=alpha_x,
+         beta_x=beta_x,
+         D_x=D_x,
+         alpha_y=alpha_y,
+         beta_y=beta_y,
+         D_y=D_y,
+         accQ_x=accQ_x, accQ_y=accQ_y, detuners=detuners)
 
-        @property
-        def betagamma(self):
-                return self._betagamma
-        @betagamma.setter
-        def betagamma(self, value):
-                self.gamma = np.sqrt(value**2 + 1)
+            else:
+                    raise ValueError('optics_mode not recognized')
 
-        @property
-        def p0(self):
-                return self._p0
-        @p0.setter
-        def p0(self, value):
-                self.gamma = value / (self.mass * self.beta * c)
+            self.circumference = s[-1]
+
+
+            # compute the index of the element before which to insert
+            # the longitudinal map
+            if longitudinal_mode is not None:
+                    for insert_before, si in enumerate(s):
+                            if si > 0.5 * self.circumference:
+                                    break
+
+            if longitudinal_mode == 'linear':
+                    self.longitudinal_map = LinearMap(
+                            np.atleast_1d(alpha_mom_compaction),
+                            self.circumference, Q_s,
+                            D_x=self.transverse_map.D_x[insert_before],
+                            D_y=self.transverse_map.D_y[insert_before]
+                    )
+            elif longitudinal_mode == 'non-linear':
+                    self.longitudinal_map = RFSystems(
+                            self.circumference, np.atleast_1d(h_RF),
+                            np.atleast_1d(V_RF), np.atleast_1d(dphi_RF),
+                            np.atleast_1d(alpha_mom_compaction), self.gamma, p_increment,
+                            D_x=self.transverse_map.D_x[insert_before],
+                            D_y=self.transverse_map.D_y[insert_before]
+                    )
+            else:
+                    raise NotImplementedError(
+                            'Something wrong with longitudinal_mode')
+
+    @property
+    def gamma(self):
+            return self._gamma
+    @gamma.setter
+    def gamma(self, value):
+            self._gamma = value
+            self._beta = np.sqrt(1 - self.gamma**-2)
+            self._betagamma = np.sqrt(self.gamma**2 - 1)
+            self._p0 = self.betagamma * self.mass * c
+
+    @property
+    def beta(self):
+            return self._beta
+    @beta.setter
+    def beta(self, value):
+            self.gamma = 1. / np.sqrt(1-value**2)
+
+    @property
+    def betagamma(self):
+            return self._betagamma
+    @betagamma.setter
+    def betagamma(self, value):
+            self.gamma = np.sqrt(value**2 + 1)
+
+    @property
+    def p0(self):
+            return self._p0
+    @p0.setter
+    def p0(self, value):
+            self.gamma = np.sqrt((value / self.mass * c )**2 + 1)     
+                
+    def track(self, bunch, verbose=False):
+        for m in self.one_turn_map:
+            if verbose:
+                self.prints('Tracking through:\n' + str(m))
+            m.track(bunch)
 
     def install_after_each_transverse_segment(self, element_to_add):
         '''Attention: Do not add any elements which update the dispersion!'''
@@ -171,13 +179,13 @@ class BasicSynchrotron(Element):
         else:
             raise NotImplementedError(
                 'Something wrong with self.longitudinal_focusing')
-
+    
         eta = self.longitudinal_map.alpha_array[0] - self.gamma**-2
         beta_z    = np.abs(eta)*self.circumference/2./np.pi/self.longitudinal_map.Q_s
         sigma_dp  = sigma_z/beta_z
         epsx_geo = epsn_x/self.betagamma
         epsy_geo = epsn_y/self.betagamma
-
+    
         bunch = gen.ParticleGenerator(macroparticlenumber=n_macroparticles,
                 intensity=intensity, charge=self.charge, mass=self.mass,
                 circumference=self.circumference, gamma=self.gamma,
@@ -194,9 +202,9 @@ class BasicSynchrotron(Element):
                     alpha=self.alpha_y[0], beta=self.beta_y[0],
                     dispersion=self.D_y[0])
                 ).generate()
-
+    
         return bunch
-
+    
     def generate_6D_Gaussian_bunch_matched(
             self, n_macroparticles, intensity, epsn_x, epsn_y,
             sigma_z=None, epsn_z=None):
@@ -207,14 +215,14 @@ class BasicSynchrotron(Element):
         the non-linear bucket. Thus, the bunch length should amount
         to the one specificed and should not change significantly
         during the synchrotron motion.
-
+    
         Requires self.longitudinal_focusing == 'non-linear'
         for the bucket.
         '''
         assert self.longitudinal_focusing == 'non-linear'
         epsx_geo = epsn_x/self.betagamma
         epsy_geo = epsn_y/self.betagamma
-
+    
         bunch = gen.ParticleGenerator(macroparticlenumber=n_macroparticles,
                 intensity=intensity, charge=self.charge, mass=self.mass,
                 circumference=self.circumference, gamma=self.gamma,
@@ -230,5 +238,5 @@ class BasicSynchrotron(Element):
                     alpha=self.alpha_y[0], beta=self.beta_y[0],
                     dispersion=self.D_y[0])
                 ).generate()
-
+    
         return bunch

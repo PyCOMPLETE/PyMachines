@@ -3,6 +3,8 @@ import sys
 sys.path.append('../')
 
 
+from scipy.constants import e,c
+
 macroparticlenumber = 50000
 n_turns = 512
 
@@ -13,7 +15,7 @@ sigma_z = 0.05
 intensity = 1e11
 
 mode = 'smooth'
-# mode = 'non-smooth'
+mode = 'non-smooth'
 
 from LHC import LHC
 import pickle
@@ -103,6 +105,17 @@ plt.plot(np.fft.rfftfreq(len(beam_y), d=1.), np.abs(np.fft.rfft(beam_y)))
 #~ plt.figure(100)
 #~ plt.plot(optics['s'][:],optics['beta_x'][:], '-o')
 
+LHC_with_octupole_injection = LHC(machine_configuration='Injection', n_segments=5, octupole_knob = -1.5)
+print '450GeV:'
+print 'i_octupole_focusing =',LHC_with_octupole_injection.i_octupole_focusing
+print 'i_octupole_defocusing =',LHC_with_octupole_injection.i_octupole_defocusing
+print 'in the machine we get 19.557'
+print '  '
+LHC_with_octupole_flattop = LHC(machine_configuration='Injection', n_segments=5, p0=6.5e12*e/c, octupole_knob = -2.9)
 
+print '6.5TeV:'
+print 'i_octupole_focusing =',LHC_with_octupole_flattop.i_octupole_focusing
+print 'i_octupole_defocusing =',LHC_with_octupole_flattop.i_octupole_defocusing
+print 'in the machine we get 546.146'
 
 plt.show()

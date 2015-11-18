@@ -6,6 +6,7 @@ class LHC(BasicSynchrotron):
 
 	def __init__(self, machine_configuration=None, optics_mode='smooth', **kwargs):
 		
+		
 		longitudinal_mode = 'non-linear' 
 		alpha		= 3.225e-04
 		h_RF       	= 35640
@@ -85,19 +86,22 @@ class LHC(BasicSynchrotron):
 				temp =  kwargs[attr]
 				exec('%s = temp'%attr)
 				
-				
+
 
 		if i_octupole_focusing is not None or i_octupole_defocusing is not None:
 			if octupole_knob is not None:
 				raise ValueError('octupole_knobs and octupole currents cannot be used at the same time!')
-			app_x, app_y, app_xy = self._anharmonicities_from_octupole_current_settings(self, i_focusing, i_octupole_defocusing)
+			app_x, app_y, app_xy = self._anharmonicities_from_octupole_current_settings(i_octupole_focusing, i_octupole_defocusing)
+			self.i_octupole_focusing = i_octupole_focusing
+			self.i_octupole_defocusing = i_octupole_defocusing
 			
 		if octupole_knob is not None:	
 			if i_octupole_focusing is not None or i_octupole_defocusing is not None:
 				raise ValueError('octupole_knobs and octupole currents cannot be used at the same time!')
-			i_octupole_focusing, i_octupole_defocusing =  self._octupole_currents_from_octupole_knobs(octupole_knob)
-			app_x, app_y, app_xy = self._anharmonicities_from_octupole_current_settings(self, i_octupole_focusing, i_octupole_defocusing)		
-			
+			i_octupole_focusing, i_octupole_defocusing =  self._octupole_currents_from_octupole_knobs(octupole_knob, p0)
+			app_x, app_y, app_xy = self._anharmonicities_from_octupole_current_settings(i_octupole_focusing, i_octupole_defocusing)		
+			self.i_octupole_focusing = i_octupole_focusing
+			self.i_octupole_defocusing = i_octupole_defocusing
 		
 		
 		super(LHC, self).__init__(optics_mode=optics_mode, circumference=circumference, n_segments=n_segments, s=s,
@@ -148,7 +152,7 @@ class LHC(BasicSynchrotron):
 	
 			return app_x, app_y, app_xy
 		
-	def _octupole_currents_from_octupole_knobs(self, octupole_knob):
-		i_octupole_focusing = 19.557 * octupole_knob / (-1.5)
+	def _octupole_currents_from_octupole_knobs(self, octupole_knob, p0):
+		i_octupole_focusing = 19.557 * octupole_knob / (-1.5) * p0 / 2.4049285931335872e-16
 		i_octupole_defocusing = - i_octupole_focusing
 		return i_octupole_focusing, i_octupole_defocusing

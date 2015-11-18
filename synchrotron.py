@@ -57,15 +57,13 @@ class BasicSynchrotron(Element):
                     s = (np.arange(0, n_segments + 1)
                               * circumference / n_segments)
 
-                    self.transverse_map = TransverseMap(s=s,
-                    alpha_x=0.*s,
-                    beta_x=0.*s+beta_x,
-                    D_x=0.*s+D_x,
-                    alpha_y=0.*s,
-                    beta_y=0.*s+beta_y,
-                    D_y=0.*s+D_y,
-                    accQ_x=accQ_x, accQ_y=accQ_y, detuners=detuners)
 
+                    alpha_x=0.*s
+                    beta_x=0.*s+beta_x
+                    D_x=0.*s+D_x
+                    alpha_y=0.*s
+                    beta_y=0.*s+beta_y
+                    D_y=0.*s+D_y
 
             elif optics_mode == 'non-smooth':
                     if circumference is not None:
@@ -77,17 +75,17 @@ class BasicSynchrotron(Element):
                     if s is None:
                             raise ValueError('s has to be specified if optics_mode = "smooth"')
 
-                    self.transverse_map = TransverseMap(s=s,
-                    alpha_x=alpha_x,
-                    beta_x=beta_x,
-                    D_x=D_x,
-                    alpha_y=alpha_y,
-                    beta_y=beta_y,
-                    D_y=D_y,
-                    accQ_x=accQ_x, accQ_y=accQ_y, detuners=detuners)
-
             else:
                     raise ValueError('optics_mode not recognized')
+                
+            self.transverse_map = TransverseMap(s=s,
+                alpha_x=alpha_x,
+                beta_x=beta_x,
+                D_x=D_x,
+                alpha_y=alpha_y,
+                beta_y=beta_y,
+                D_y=D_y,
+                accQ_x=accQ_x, accQ_y=accQ_y, detuners=detuners)
 
             self.circumference = s[-1]
             

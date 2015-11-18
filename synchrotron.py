@@ -145,7 +145,7 @@ class BasicSynchrotron(Element):
             return self._p0
     @p0.setter
     def p0(self, value):
-            self.gamma = np.sqrt((value / self.mass * c )**2 + 1)     
+            self.gamma = 1 / (c * self.mass) * np.sqrt(value**2+self.mass**2*c**2)     
                 
     def track(self, bunch, verbose=False):
         for m in self.one_turn_map:

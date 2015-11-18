@@ -31,6 +31,8 @@ class LHC(BasicSynchrotron):
 			n_segments = kwargs['n_segments']
 			circumference = 26658.8832
 			
+			name = None
+			
 			beta_x 		= 92.7 
 			D_x 		= 0
 			beta_y 		= 93.2 
@@ -45,6 +47,8 @@ class LHC(BasicSynchrotron):
 			if 'n_segments' in kwargs.keys(): raise ValueError('n_segments cannot be provided if optics_mode = "non-smooth"')
 			n_segments = None
 			circumference = None
+			
+			name		= kwargs['name']
 			
 			beta_x 		= kwargs['beta_x']
 			beta_y 		= kwargs['beta_y'] 
@@ -104,7 +108,7 @@ class LHC(BasicSynchrotron):
 			self.i_octupole_defocusing = i_octupole_defocusing
 		
 		
-		super(LHC, self).__init__(optics_mode=optics_mode, circumference=circumference, n_segments=n_segments, s=s,
+		super(LHC, self).__init__(optics_mode=optics_mode, circumference=circumference, n_segments=n_segments, s=s, name=name,
              alpha_x=alpha_x, beta_x=beta_x, D_x=D_x, alpha_y=alpha_y, beta_y=beta_y, D_y=D_y,
              accQ_x=accQ_x, accQ_y=accQ_y, Qp_x=Qp_x, Qp_y=Qp_y, app_x=app_x, app_y=app_y, app_xy=app_xy,
              alpha_mom_compaction=alpha, longitudinal_mode=longitudinal_mode,

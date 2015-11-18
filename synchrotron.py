@@ -21,7 +21,7 @@ except ImportError as e:
 from PyHEADTAIL.trackers.simple_long_tracking import LinearMap, RFSystems
 
 class BasicSynchrotron(Element):
-    def __init__(self, optics_mode, circumference=None, n_segments=None, s=None, s_name=None,
+    def __init__(self, optics_mode, circumference=None, n_segments=None, s=None, name=None,
             alpha_x=None, beta_x=None, D_x=None, alpha_y=None, beta_y=None, D_y=None,
             accQ_x=None, accQ_y=None, Qp_x=0, Qp_y=0, app_x=0, app_y=0, app_xy=0,
             alpha_mom_compaction=None, longitudinal_mode=None, Q_s=None,
@@ -44,7 +44,7 @@ class BasicSynchrotron(Element):
                     detuners.append(AmplitudeDetuning(app_x, app_y, app_xy))
 
             # construct transverse map 
-            self._contruct_transverse_map(optics_mode=optics_mode, circumference=circumference, n_segments=n_segments, s=s,
+            self._contruct_transverse_map(optics_mode=optics_mode, circumference=circumference, n_segments=n_segments, s=s, name=name,
                 alpha_x=alpha_x, beta_x=beta_x, D_x=D_x, alpha_y=alpha_y, beta_y=beta_y, D_y=D_y,
                 accQ_x=accQ_x, accQ_y=accQ_y, detuners=detuners)
             
@@ -183,7 +183,7 @@ class BasicSynchrotron(Element):
     
         return bunch
     
-    def _contruct_transverse_map(self, optics_mode=None, circumference=None, n_segments=None, s=None, s_name=None,
+    def _contruct_transverse_map(self, optics_mode=None, circumference=None, n_segments=None, s=None, name=None,
             alpha_x=None, beta_x=None, D_x=None, alpha_y=None, beta_y=None, D_y=None,
             accQ_x=None, accQ_y=None, detuners=[]):    
     
@@ -232,11 +232,12 @@ class BasicSynchrotron(Element):
     
         self.circumference = s[-1]
         
-        if s_name is None:
+        if name is None:
             self.transverse_map.name = ['P_%d'%ip for ip in xrange(len(s)-1)]            
-        self.transverse_map.name.append('end_ring')
-        
-        
+            self.transverse_map.name.append('end_ring')
+        else:
+            self.transverse_map.name = name
+            
         for i_seg, m in enumerate(self.transverse_map):
             m.s0 = self.transverse_map.s[i_seg]
             m.s1 = self.transverse_map.s[i_seg+1]

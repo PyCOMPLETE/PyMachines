@@ -35,6 +35,8 @@ class BasicSynchrotron(Element):
             self.mass = mass
             self.p0 = p0
             
+            self.one_turn_map = []
+            
             detuners = []
             if Qp_x != 0 or Qp_y != 0:
                     detuners.append(Chromaticity(Qp_x, Qp_y))
@@ -56,13 +58,13 @@ class BasicSynchrotron(Element):
                               * circumference / n_segments)
 
                     self.transverse_map = TransverseMap(s=s,
-                     alpha_x=0.*s,
-                     beta_x=0.*s+beta_x,
-                     D_x=0.*s+D_x,
-                     alpha_y=0.*s,
-                     beta_y=0.*s+beta_y,
-                     D_y=0.*s+D_y,
-                     accQ_x=accQ_x, accQ_y=accQ_y, detuners=detuners)
+                    alpha_x=0.*s,
+                    beta_x=0.*s+beta_x,
+                    D_x=0.*s+D_x,
+                    alpha_y=0.*s,
+                    beta_y=0.*s+beta_y,
+                    D_y=0.*s+D_y,
+                    accQ_x=accQ_x, accQ_y=accQ_y, detuners=detuners)
 
 
             elif optics_mode == 'non-smooth':
@@ -76,18 +78,23 @@ class BasicSynchrotron(Element):
                             raise ValueError('s has to be specified if optics_mode = "smooth"')
 
                     self.transverse_map = TransverseMap(s=s,
-         alpha_x=alpha_x,
-         beta_x=beta_x,
-         D_x=D_x,
-         alpha_y=alpha_y,
-         beta_y=beta_y,
-         D_y=D_y,
-         accQ_x=accQ_x, accQ_y=accQ_y, detuners=detuners)
+                    alpha_x=alpha_x,
+                    beta_x=beta_x,
+                    D_x=D_x,
+                    alpha_y=alpha_y,
+                    beta_y=beta_y,
+                    D_y=D_y,
+                    accQ_x=accQ_x, accQ_y=accQ_y, detuners=detuners)
 
             else:
                     raise ValueError('optics_mode not recognized')
 
             self.circumference = s[-1]
+            
+            
+            # insert transverse map in the ring
+            for m in self.transverse_map:
+                self.one_turn_map.append(m)
 
 
             # compute the index of the element before which to insert
@@ -115,6 +122,8 @@ class BasicSynchrotron(Element):
             else:
                     raise NotImplementedError(
                             'Something wrong with longitudinal_mode')
+                    
+            self.one_turn_map.insert(insert_before, self.longitudinal_map)
 
     @property
     def gamma(self):
@@ -171,20 +180,22 @@ class BasicSynchrotron(Element):
         the separatrix (with some margin). It will gradually filament
         into the bucket. This will change the specified bunch length.
         '''
-        if self.longitudinal_focusing == 'linear':
+        if self.longitudinal_mode == 'linear':
             check_inside_bucket = lambda z,dp : np.array(len(z)*[True])
-        elif self.longitudinal_focusing == 'non-linear':
+        elif self.longitudinal_mode == 'non-linear':
             check_inside_bucket = self.longitudinal_map.get_bucket(
                 gamma=self.gamma).make_is_accepted(margin=0.05)
         else:
             raise NotImplementedError(
-                'Something wrong with self.longitudinal_focusing')
+                'Something wrong with self.longitudinal_mode')
     
         eta = self.longitudinal_map.alpha_array[0] - self.gamma**-2
         beta_z    = np.abs(eta)*self.circumference/2./np.pi/self.longitudinal_map.Q_s
         sigma_dp  = sigma_z/beta_z
         epsx_geo = epsn_x/self.betagamma
         epsy_geo = epsn_y/self.betagamma
+        
+        injection_optics = self.transverse_map.get_injection_optics()
     
         bunch = gen.ParticleGenerator(macroparticlenumber=n_macroparticles,
                 intensity=intensity, charge=self.charge, mass=self.mass,
@@ -196,11 +207,11 @@ class BasicSynchrotron(Element):
                         sigma_u=sigma_z, sigma_up=sigma_dp),
                     is_accepted=check_inside_bucket),
                 linear_matcher_x=gen.transverse_linear_matcher(
-                    alpha=self.alpha_x[0], beta=self.beta_x[0],
-                    dispersion=self.D_x[0]),
+                    alpha=injection_optics['alpha_x'], beta=injection_optics['beta_x'],
+                    dispersion=injection_optics['D_x']),
                 linear_matcher_y=gen.transverse_linear_matcher(
-                    alpha=self.alpha_y[0], beta=self.beta_y[0],
-                    dispersion=self.D_y[0])
+                    alpha=injection_optics['alpha_y'], beta=injection_optics['beta_y'],
+                    dispersion=injection_optics['D_y'])
                 ).generate()
     
         return bunch
@@ -216,12 +227,14 @@ class BasicSynchrotron(Element):
         to the one specificed and should not change significantly
         during the synchrotron motion.
     
-        Requires self.longitudinal_focusing == 'non-linear'
+        Requires self.longitudinal_mode == 'non-linear'
         for the bucket.
         '''
-        assert self.longitudinal_focusing == 'non-linear'
+        assert self.longitudinal_mode == 'non-linear'
         epsx_geo = epsn_x/self.betagamma
         epsy_geo = epsn_y/self.betagamma
+        
+        injection_optics = self.transverse_map.get_injection_optics()
     
         bunch = gen.ParticleGenerator(macroparticlenumber=n_macroparticles,
                 intensity=intensity, charge=self.charge, mass=self.mass,
@@ -232,11 +245,11 @@ class BasicSynchrotron(Element):
                     rfbucket=self.longitudinal_map.get_bucket(gamma=self.gamma),
                     sigma_z=sigma_z, epsn_z=epsn_z),
                 linear_matcher_x=gen.transverse_linear_matcher(
-                    alpha=self.alpha_x[0], beta=self.beta_x[0],
-                    dispersion=self.D_x[0]),
+                    alpha=injection_optics['alpha_x'], beta=injection_optics['beta_x'],
+                    dispersion=injection_optics['D_x']),
                 linear_matcher_y=gen.transverse_linear_matcher(
-                    alpha=self.alpha_y[0], beta=self.beta_y[0],
-                    dispersion=self.D_y[0])
+                    alpha=injection_optics['alpha_y'], beta=injection_optics['beta_y'],
+                    dispersion=injection_optics['D_y'])
                 ).generate()
     
         return bunch

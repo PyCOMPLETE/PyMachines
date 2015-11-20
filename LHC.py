@@ -92,8 +92,12 @@ class LHC(BasicSynchrotron):
 		
 		for attr in kwargs.keys():
 			if kwargs[attr] is not None:
+				if type(kwargs[attr]) is list or type(kwargs[attr]) is np.ndarray:
+					str2print = '[%s ...]'%repr(kwargs[attr][0])
+				else:
+					str2print = repr(kwargs[attr])
 				self.prints('Synchrotron init. From kwargs: %s = %s'
-							% (attr, repr(kwargs[attr])))
+							% (attr, str2print))
 				temp =  kwargs[attr]
 				exec('%s = temp'%attr)
 				

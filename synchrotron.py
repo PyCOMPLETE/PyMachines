@@ -239,6 +239,8 @@ class BasicSynchrotron(Element):
             self.transverse_map.name = name
             
         for i_seg, m in enumerate(self.transverse_map):
+            m.i0 = i_seg
+            m.i1 = i_seg+1
             m.s0 = self.transverse_map.s[i_seg]
             m.s1 = self.transverse_map.s[i_seg+1]
             m.name0 = self.transverse_map.name[i_seg]

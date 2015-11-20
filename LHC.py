@@ -20,6 +20,13 @@ class LHC(BasicSynchrotron):
 			accQ_y		= 59.31
 			V_RF		= 6e6
 			dphi_RF		= 0.
+		elif machine_configuration=='6.5_TeV_collision_tunes':
+			p0 			= 6500e9 * e /c
+			p_increment = 0.
+			accQ_x		= 64.31
+			accQ_y		= 59.32
+			V_RF		= 12e6
+			dphi_RF		= 0.
 		else:
 			raise ValueError('machine_configuration not recognized!')
 			

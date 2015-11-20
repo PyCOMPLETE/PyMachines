@@ -243,7 +243,10 @@ class BasicSynchrotron(Element):
             m.s1 = self.transverse_map.s[i_seg+1]
             m.name0 = self.transverse_map.name[i_seg]
             m.name1 = self.transverse_map.name[i_seg+1]
-        
+            m.beta_x0 = self.transverse_map.beta_x[i_seg]
+            m.beta_x1 = self.transverse_map.beta_x[i_seg+1]
+            m.beta_y0 = self.transverse_map.beta_y[i_seg]
+            m.beta_y1 = self.transverse_map.beta_y[i_seg+1]          
     
         # insert transverse map in the ring
         for m in self.transverse_map:

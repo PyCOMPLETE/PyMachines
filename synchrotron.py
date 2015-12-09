@@ -19,6 +19,8 @@ except ImportError as e:
         from PyHEADTAIL.trackers.detuners import Chromaticity, AmplitudeDetuning
 
 from PyHEADTAIL.trackers.simple_long_tracking import LinearMap, RFSystems
+from PyHEADTAIL.trackers.wrapper import LongWrapper
+from PyHEADTAIL.particles.slicing import UniformBinSlicer
 
 class BasicSynchrotron(Element):
     def __init__(self, optics_mode, circumference=None, n_segments=None, s=None, name=None,
@@ -26,33 +28,37 @@ class BasicSynchrotron(Element):
             accQ_x=None, accQ_y=None, Qp_x=0, Qp_y=0, app_x=0, app_y=0, app_xy=0,
             alpha_mom_compaction=None, longitudinal_mode=None, Q_s=None,
             h_RF=None, V_RF=None, dphi_RF=None, p0=None, p_increment=None,
-            charge=None, mass=None, **kwargs):
+            charge=None, mass=None, wrap_z=False, **kwargs):
 
             
-            self.optics_mode = optics_mode
-            self.longitudinal_mode = longitudinal_mode
-            self.charge = charge
-            self.mass = mass
-            self.p0 = p0
-            
-            self.one_turn_map = []
-            
-            detuners = []
-            if Qp_x != 0 or Qp_y != 0:
-                    detuners.append(Chromaticity(Qp_x, Qp_y))
+        self.optics_mode = optics_mode
+        self.longitudinal_mode = longitudinal_mode
+        self.charge = charge
+        self.mass = mass
+        self.p0 = p0
+        self.h_RF = h_RF
+
+        self.one_turn_map = []
+
+        detuners = []
+        if Qp_x != 0 or Qp_y != 0:
+            detuners.append(Chromaticity(Qp_x, Qp_y))
             if app_x != 0 or app_y != 0 or app_xy != 0:
-                    detuners.append(AmplitudeDetuning(app_x, app_y, app_xy))
+                detuners.append(AmplitudeDetuning(app_x, app_y, app_xy))
 
-            # construct transverse map 
-            self._contruct_transverse_map(optics_mode=optics_mode, circumference=circumference, n_segments=n_segments, s=s, name=name,
+        # construct transverse map 
+        self._contruct_transverse_map(optics_mode=optics_mode, circumference=circumference, n_segments=n_segments, s=s, name=name,
                 alpha_x=alpha_x, beta_x=beta_x, D_x=D_x, alpha_y=alpha_y, beta_y=beta_y, D_y=D_y,
                 accQ_x=accQ_x, accQ_y=accQ_y, detuners=detuners)
             
-            # construct longitudinal map 
-            self._contruct_longitudinal_map(alpha_mom_compaction=alpha_mom_compaction, longitudinal_mode=longitudinal_mode, Q_s=Q_s,
-            h_RF=h_RF, V_RF=V_RF, dphi_RF=dphi_RF, p_increment=p_increment)
+        # construct longitudinal map 
+        self._contruct_longitudinal_map(alpha_mom_compaction=alpha_mom_compaction, longitudinal_mode=longitudinal_mode, Q_s=Q_s,
+                h_RF=h_RF, V_RF=V_RF, dphi_RF=dphi_RF, p_increment=p_increment)
 
-
+        # add long wrapper and buncher        
+        if wrap_z:
+            self._add_wrapper_and_buncher()
+            
 
     @property
     def gamma(self):
@@ -113,7 +119,7 @@ class BasicSynchrotron(Element):
             check_inside_bucket = lambda z,dp : np.array(len(z)*[True])
         elif self.longitudinal_mode == 'non-linear':
             check_inside_bucket = self.longitudinal_map.get_bucket(
-                gamma=self.gamma).make_is_accepted(margin=0.05)
+                gamma=self.gamma, mass=self.mass, charge=self.charge).make_is_accepted(margin=0.05)
         else:
             raise NotImplementedError(
                 'Something wrong with self.longitudinal_mode')
@@ -171,14 +177,12 @@ class BasicSynchrotron(Element):
                 distribution_x=gen.gaussian2D(epsx_geo),
                 distribution_y=gen.gaussian2D(epsy_geo),
                 distribution_z=gen.RF_bucket_distribution(
-                    rfbucket=self.longitudinal_map.get_bucket(gamma=self.gamma),
+                    rfbucket=self.longitudinal_map.get_bucket(gamma=self.gamma, mass=self.mass, charge=self.charge),
                     sigma_z=sigma_z, epsn_z=epsn_z),
-                linear_matcher_x=gen.transverse_linear_matcher(
-                    alpha=injection_optics['alpha_x'], beta=injection_optics['beta_x'],
-                    dispersion=injection_optics['D_x']),
-                linear_matcher_y=gen.transverse_linear_matcher(
-                    alpha=injection_optics['alpha_y'], beta=injection_optics['beta_y'],
-                    dispersion=injection_optics['D_y'])
+                alpha_x=injection_optics['alpha_x'], beta_x=injection_optics['beta_x'],
+                    D_x=injection_optics['D_x'],
+                alpha_y=injection_optics['alpha_y'], beta_y=injection_optics['beta_y'],
+                    D_y=injection_optics['D_y']
                 ).generate()
     
         return bunch
@@ -260,27 +264,47 @@ class BasicSynchrotron(Element):
         # compute the index of the element before which to insert
         # the longitudinal map
         if longitudinal_mode is not None:
-                for insert_before, si in enumerate(self.transverse_map.s):
-                        if si > 0.5 * self.circumference:
-                                break
+            for insert_before, si in enumerate(self.transverse_map.s):
+                if si > 0.5 * self.circumference:
+                    break
 
         if longitudinal_mode == 'linear':
-                self.longitudinal_map = LinearMap(
-                        np.atleast_1d(alpha_mom_compaction),
-                        self.circumference, Q_s,
-                        D_x=self.transverse_map.D_x[insert_before],
-                        D_y=self.transverse_map.D_y[insert_before]
-                )
+            self.longitudinal_map = LinearMap(
+                    np.atleast_1d(alpha_mom_compaction),
+                    self.circumference, Q_s,
+                    D_x=self.transverse_map.D_x[insert_before],
+                    D_y=self.transverse_map.D_y[insert_before]
+            )
         elif longitudinal_mode == 'non-linear':
-                self.longitudinal_map = RFSystems(
-                        self.circumference, np.atleast_1d(h_RF),
-                        np.atleast_1d(V_RF), np.atleast_1d(dphi_RF),
-                        np.atleast_1d(alpha_mom_compaction), self.gamma, p_increment,
-                        D_x=self.transverse_map.D_x[insert_before],
-                        D_y=self.transverse_map.D_y[insert_before]
-                )
+            self.longitudinal_map = RFSystems(
+                    self.circumference, np.atleast_1d(h_RF),
+                    np.atleast_1d(V_RF), np.atleast_1d(dphi_RF),
+                    np.atleast_1d(alpha_mom_compaction), self.gamma, p_increment,
+                    D_x=self.transverse_map.D_x[insert_before],
+                    D_y=self.transverse_map.D_y[insert_before]
+            )
         else:
-                raise NotImplementedError(
-                        'Something wrong with longitudinal_mode')
+            raise NotImplementedError(
+                    'Something wrong with longitudinal_mode')
                 
         self.one_turn_map.insert(insert_before, self.longitudinal_map)
+
+
+
+    def _add_wrapper_and_buncher(self):
+
+        if self.longitudinal_mode == 'linear':
+            raise ValueError('Not implemented!!!!')
+         
+        elif self.longitudinal_mode == 'non-linear':
+            h_RF = self.h_RF[0]
+            bucket = self.longitudinal_map.get_bucket(gamma=self.gamma, mass=self.mass, charge=self.charge)
+            bucket_length = self.circumference/h_RF
+            z_beam_center = bucket.z_ufp_separatrix + bucket_length - self.circumference/2.
+            self.z_wrapper = LongWrapper(circumference=self.circumference, z0=z_beam_center)
+            self.one_turn_map.append(self.z_wrapper)
+            self.buncher = UniformBinSlicer(h_RF, z_cuts=(self.z_wrapper.z_min,  self.z_wrapper.z_max))
+
+        else:
+            raise NotImplementedError(
+                'Something wrong with longitudinal_mode')

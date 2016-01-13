@@ -214,6 +214,7 @@ class BasicSynchrotron(Element):
             accQ_x=accQ_x, accQ_y=accQ_y, detuners=detuners)
     
         self.circumference = s[-1]
+        self.transverse_map.n_segments = len(s)-1
         
         if name is None:
             self.transverse_map.name = ['P_%d'%ip for ip in xrange(len(s)-1)]            

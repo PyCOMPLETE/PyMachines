@@ -125,23 +125,14 @@ class BasicSynchrotron(Element):
         epsy_geo = epsn_y/self.betagamma
         
         injection_optics = self.transverse_map.get_injection_optics()
-    
+        
         bunch = gen.ParticleGenerator(macroparticlenumber=n_macroparticles,
-                intensity=intensity, charge=self.charge, mass=self.mass,
-                circumference=self.circumference, gamma=self.gamma,
-                distribution_x=gen.gaussian2D(epsx_geo),
-                distribution_y=gen.gaussian2D(epsy_geo),
-                distribution_z=gen.cut_distribution(
-                    gen.gaussian2D_asymmetrical(
-                        sigma_u=sigma_z, sigma_up=sigma_dp),
-                    is_accepted=check_inside_bucket),
-                linear_matcher_x=gen.transverse_linear_matcher(
-                    alpha=injection_optics['alpha_x'], beta=injection_optics['beta_x'],
-                    dispersion=injection_optics['D_x']),
-                linear_matcher_y=gen.transverse_linear_matcher(
-                    alpha=injection_optics['alpha_y'], beta=injection_optics['beta_y'],
-                    dispersion=injection_optics['D_y'])
-                ).generate()
+                                     intensity=intensity, charge=self.charge, mass=self.mass,
+                                     circumference=self.circumference, gamma=self.gamma,
+                                     distribution_x = gen.gaussian2D(epsx_geo), alpha_x=injection_optics['alpha_x'], beta_x=injection_optics['beta_x'], D_x=injection_optics['D_x'],
+                                     distribution_y = gen.gaussian2D(epsy_geo), alpha_y=injection_optics['alpha_y'], beta_y=injection_optics['beta_y'], D_y=injection_optics['D_y'],
+                                     distribution_z = gen.cut_distribution(gen.gaussian2D_asymmetrical(sigma_u=sigma_z, sigma_up=sigma_dp),is_accepted=check_inside_bucket),
+                                     ).generate()
     
         return bunch
     
@@ -164,22 +155,14 @@ class BasicSynchrotron(Element):
         epsy_geo = epsn_y/self.betagamma
         
         injection_optics = self.transverse_map.get_injection_optics()
-    
+        
         bunch = gen.ParticleGenerator(macroparticlenumber=n_macroparticles,
-                intensity=intensity, charge=self.charge, mass=self.mass,
-                circumference=self.circumference, gamma=self.gamma,
-                distribution_x=gen.gaussian2D(epsx_geo),
-                distribution_y=gen.gaussian2D(epsy_geo),
-                distribution_z=gen.RF_bucket_distribution(
-                    rfbucket=self.longitudinal_map.get_bucket(gamma=self.gamma),
-                    sigma_z=sigma_z, epsn_z=epsn_z),
-                linear_matcher_x=gen.transverse_linear_matcher(
-                    alpha=injection_optics['alpha_x'], beta=injection_optics['beta_x'],
-                    dispersion=injection_optics['D_x']),
-                linear_matcher_y=gen.transverse_linear_matcher(
-                    alpha=injection_optics['alpha_y'], beta=injection_optics['beta_y'],
-                    dispersion=injection_optics['D_y'])
-                ).generate()
+                                     intensity=intensity, charge=self.charge, mass=self.mass,
+                                     circumference=self.circumference, gamma=self.gamma,
+                                     distribution_x = gen.gaussian2D(epsx_geo), alpha_x=injection_optics['alpha_x'], beta_x=injection_optics['beta_x'], D_x=injection_optics['D_x'],
+                                     distribution_y = gen.gaussian2D(epsy_geo), alpha_y=injection_optics['alpha_y'], beta_y=injection_optics['beta_y'], D_y=injection_optics['D_y'],
+                                     distribution_z = gen.RF_bucket_distribution(self.longitudinal_map.get_bucket(gamma=self.gamma), sigma_z=sigma_z, epsn_z=epsn_z),
+                                     ).generate()
     
         return bunch
     

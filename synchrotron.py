@@ -1,7 +1,7 @@
 from __future__ import division
 
 import numpy as np
-from scipy.constants import c
+from scipy.constants import c, e
 
 from PyHEADTAIL.general.element import Element
 import PyHEADTAIL.particles.generators as gen
@@ -119,7 +119,7 @@ class BasicSynchrotron(Element):
                 'Something wrong with self.longitudinal_mode')
     
         eta = self.longitudinal_map.alpha_array[0] - self.gamma**-2
-        beta_z    = np.abs(eta)*self.circumference/2./np.pi/self.longitudinal_map.Q_s
+        beta_z    = np.abs(eta)*self.circumference/2./np.pi/self.longitudinal_map.Qs
         sigma_dp  = sigma_z/beta_z
         epsx_geo = epsn_x/self.betagamma
         epsy_geo = epsn_y/self.betagamma
@@ -248,12 +248,23 @@ class BasicSynchrotron(Element):
                                 break
 
         if longitudinal_mode == 'linear':
+        	
+        	eta = alpha_mom_compaction - self.gamma**-2
+        	
+        	if Q_s == None:
+        		if p_increment!=0 or dphi_RF!=0:
+        	   		raise ValueError('Formula not valid in this case!!!!')
+        		else:
+       				Q_s = np.sqrt( e*np.abs(eta)*(h_RF*V_RF)
+                        		/ (2*np.pi*self.p0*self.beta*c) )
+                        		
                 self.longitudinal_map = LinearMap(
                         np.atleast_1d(alpha_mom_compaction),
                         self.circumference, Q_s,
                         D_x=self.transverse_map.D_x[insert_before],
-                        D_y=self.transverse_map.D_y[insert_before]
-                )
+                        D_y=self.transverse_map.D_y[insert_before])
+                        
+                        
         elif longitudinal_mode == 'non-linear':
                 self.longitudinal_map = RFSystems(
                         self.circumference, np.atleast_1d(h_RF),

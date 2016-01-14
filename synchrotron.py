@@ -83,8 +83,16 @@ class BasicSynchrotron(Element):
             return self._p0
     @p0.setter
     def p0(self, value):
-            self.gamma = 1 / (c * self.mass) * np.sqrt(value**2+self.mass**2*c**2)     
-                
+            self.gamma = 1 / (c * self.mass) * np.sqrt(value**2+self.mass**2*c**2)
+            
+    @property
+    def Q_x(self):    
+		return np.atleast_1d(self.transverse_map.accQ_x)[-1]
+	
+    @property
+    def Q_y(self):    
+		return np.atleast_1d(self.transverse_map.accQ_y)[-1]      
+                   
     def track(self, bunch, verbose=False):
         for m in self.one_turn_map:
             if verbose:

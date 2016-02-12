@@ -266,7 +266,7 @@ class BasicSynchrotron(Element):
         		else:
        				Q_s = np.sqrt( e*np.abs(eta)*(h_RF*V_RF)
                         		/ (2*np.pi*self.p0*self.beta*c) )
-                        		
+
                 self.longitudinal_map = LinearMap(
                         np.atleast_1d(alpha_mom_compaction),
                         self.circumference, Q_s,
@@ -280,7 +280,8 @@ class BasicSynchrotron(Element):
                         np.atleast_1d(V_RF), np.atleast_1d(dphi_RF),
                         np.atleast_1d(alpha_mom_compaction), self.gamma, p_increment,
                         D_x=self.transverse_map.D_x[insert_before],
-                        D_y=self.transverse_map.D_y[insert_before]
+                        D_y=self.transverse_map.D_y[insert_before],
+                        mass=self.mass, charge=self.charge
                 )
         else:
                 raise NotImplementedError(
